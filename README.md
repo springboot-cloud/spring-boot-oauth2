@@ -1,2 +1,2 @@
-# spring-boot-oauth2
-使用 oAuth2+Security 进行权限验证
+# spring-security-oauth2-demo
+使用 Security + oAuth2 进行权限验证
