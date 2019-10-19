@@ -111,7 +111,7 @@ public class GitHubAuthController {
         if (Strings.isNullOrEmpty(accessToken)) {
             return "获取ACCESS_TOKEN错误：access_token为空！";
         }
-        return getUserInfo(accessToken);
+        return "success";
     }
 
     /**
