@@ -2,6 +2,7 @@ package com.framework.oauth2.client.controller;
 
 import com.alibaba.fastjson.JSONObject;
 import com.framework.oauth2.client.util.URLEncodedUtils;
+import com.framework.oauth2.client.vo.api.ApiResponse;
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import io.swagger.annotations.Api;
@@ -72,12 +73,19 @@ public class GitHubAuthController {
     }
 
     @GetMapping("/back")
-    public String oauthBack(HttpServletRequest request) {
+    public String oauthBack(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String code = request.getParameter("code");
         if (Strings.isNullOrEmpty(code)) {
-            return "授权码为空！";
+            return "授权码不能为空！";
         }
-        return getAccessToken(code);
+        // 获取令牌
+        ApiResponse apiResponse = getAccessToken(code);
+        if (!apiResponse.isSuccess()) {
+            return apiResponse.getMsg();
+        }
+        // 返回首页
+        response.sendRedirect("/");
+        return "";
     }
 
     /**
@@ -86,7 +94,7 @@ public class GitHubAuthController {
      * @param code 授权码
      * @return String
      */
-    private String getAccessToken(String code) {
+    private ApiResponse getAccessToken(String code) {
         // 设置请求头
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON_UTF8);
@@ -99,19 +107,19 @@ public class GitHubAuthController {
         // 发送请求
         ResponseEntity<JSONObject> responseEntity = restTemplate.postForEntity(ACCESS_TOKEN_URL, entity, JSONObject.class);
         if (HttpStatus.OK.value() != responseEntity.getStatusCodeValue()) {
-            return "获取ACCESS_TOKEN：请求响应错误！";
+            return ApiResponse.buildCommonErrorResponse("获取ACCESS_TOKEN：请求响应错误！");
         }
         // 获取access_token
         JSONObject exchangeBody = responseEntity.getBody();
         if (Objects.isNull(exchangeBody) || exchangeBody.isEmpty()) {
-            return "获取ACCESS_TOKEN：响应数据为空！";
+            return ApiResponse.buildCommonErrorResponse("获取ACCESS_TOKEN：响应数据为空！");
         }
         log.info("获取ACCESS_TOKEN响应数据：" + exchangeBody.toJSONString());
         String accessToken = exchangeBody.getString("access_token");
         if (Strings.isNullOrEmpty(accessToken)) {
-            return "获取ACCESS_TOKEN错误：access_token为空！";
+            return ApiResponse.buildCommonErrorResponse("获取ACCESS_TOKEN错误：access_token为空！");
         }
-        return "success";
+        return getUserInfo(accessToken);
     }
 
     /**
@@ -120,7 +128,7 @@ public class GitHubAuthController {
      * @param accessToken 令牌
      * @return String
      */
-    private String getUserInfo(String accessToken) {
+    private ApiResponse getUserInfo(String accessToken) {
         // 设置请求头
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON_UTF8);
@@ -128,18 +136,18 @@ public class GitHubAuthController {
         HttpEntity<Object> entity = new HttpEntity<>(headers);
         ResponseEntity<JSONObject> responseEntity = restTemplate.exchange(USER_INFO_URL, HttpMethod.GET, entity, JSONObject.class);
         if (HttpStatus.OK.value() != responseEntity.getStatusCodeValue()) {
-            return "获取USER_INFO：请求响应错误！";
+            return ApiResponse.buildCommonErrorResponse("获取USER_INFO：请求响应错误！");
         }
         JSONObject exchangeBody = responseEntity.getBody();
         if (Objects.isNull(exchangeBody) || exchangeBody.isEmpty()) {
-            return "获取USER_INFO：响应数据为空！";
+            return ApiResponse.buildCommonErrorResponse("获取USER_INFO：响应数据为空！");
         }
         log.info("获取USER_INFO响应数据：" + exchangeBody.toJSONString());
         String userName = exchangeBody.getString("name");
         if (Strings.isNullOrEmpty(userName)) {
-            return "获取USER_INFO错误：用户名称为空！";
+            return ApiResponse.buildCommonErrorResponse("获取USER_INFO错误：用户名称为空！");
         }
         log.info("授权成功：" + userName);
-        return "success";
+        return ApiResponse.buildSuccessResponse(userName);
     }
 }
